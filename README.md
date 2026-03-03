@@ -1,52 +1,47 @@
 # LLM_AGENT
 
 ## Overview
-This project implements a hybrid financial data mining pipeline for unstructured text streams. It combines deterministic logic, retrieval-augmented generation (RAG), and large language models (LLMs) to produce concise market insights while reducing hallucination risk with rule-based verification.
+This project implements a hybrid financial data mining pipeline for processing unstructured text streams. It combines deterministic logic, retrieval-augmented generation (RAG), and large language models (LLMs) to generate concise market insights while reducing hallucination risk through rule-based verification.
 
-The implementation in this workspace is provided in `data_mining_agent.py`.
+The implementation in this workspace is provided in `LLM_AGENT_FOR_DATA_MINING.ipynb`.
 
 ## Key Features
-- Secure API key handling via environment variables, with masked runtime prompts as fallback.
-- Heterogeneous model strategy:
-  - Groq (Llama-3 family) for high-volume, low-latency stream inference.
-  - Google Gemini for final macro-level executive synthesis.
-- Historical data mining using Hugging Face dataset `zeroshot/twitter-financial-news-sentiment`.
-- Unsupervised RAG pipeline using sentence-transformers embeddings + FAISS nearest-neighbor retrieval.
-- Deterministic triage for rapid non-financial noise dropping (ticker/entity extraction + sentiment keyword scoring).
-- O(1)-style deterministic numeric verification to catch price hallucinations.
-- Automated benchmarking for throughput, latency overhead, and hallucination statistics.
+- **Secure API Key Handling:** Managed through environment variables and prompt-based input (`getpass` fallback).
+- **Heterogeneous Model Strategy:** Uses Groq models (Llama-3 family) for high-volume, low-latency stream inference and Google Gemini for final macro-level executive synthesis.
+- **Historical Data Mining:** Clusters and mines historical financial sentiment data from Hugging Face (`zeroshot/twitter-financial-news-sentiment`).
+- **Unsupervised RAG:** FAISS-based semantic nearest-neighbor retrieval with sentence-transformers embeddings.
+- **Sub-millisecond Triage:** Deterministic ticker/entity extraction and sentiment keyword scoring drop non-financial noise early.
+- **Deterministic Verification:** Python regex + numeric consistency checks detect and prevent quantitative price hallucinations.
+- **Automated Benchmarking:** Stream-processing outputs generate live metrics for throughput, latency overhead, and hallucination rates.
 
 ## Technology Stack
-- Python 3.10+
-- `faiss-cpu`
-- `numpy`
-- `yfinance`
-- `datasets` (Hugging Face)
-- `sentence-transformers`
-- `scikit-learn`
-- `langchain-google-genai`
-- `langchain-groq`
+- **Language:** Python 3.10+
+- **Vector Database:** FAISS (`faiss-cpu`)
+- **Data APIs:** `yfinance`, Hugging Face `datasets`
+- **Machine Learning / NLP:** `numpy`, `sentence-transformers`, `scikit-learn`
+- **LLM Orchestration:** `langchain-google-genai`, `langchain-groq`
 
 ## Project Structure
-- `data_mining_agent.py`: Main script (setup, mining, stream processing, validation, benchmarking, executive summary).
-- `README.md`: Documentation and execution guide.
+- `LLM_AGENT_FOR_DATA_MINING.ipynb`: Main notebook containing setup, mining logic, stream processing, validation, and execution flow.
+- `data_mining_agent.py`: Script version of the same pipeline logic.
+- `README.md`: Project documentation and execution instructions.
 
 ## Prerequisites
-1. Python 3.10 or higher (your report may mention 3.14; script logic remains 3.10+ compatible).
-2. Valid API keys:
-   - Google Gemini API key
-   - Groq API key
-3. Internet connectivity (required for model APIs, Hugging Face data download, and live market data retrieval).
+- Python 3.10 or newer (Python 3.14 is also supported).
+- Valid API keys:
+  - Google Gemini API key
+  - Groq API key
+- Internet connectivity (required for model APIs, Hugging Face dataset download, and live market data retrieval).
 
 ## Installation
-Install dependencies:
+Install all required dependencies:
 
 ```bash
 pip install faiss-cpu numpy yfinance datasets sentence-transformers langchain-google-genai scikit-learn langchain-groq
 ```
 
 ## Configuration
-Set API keys before execution (recommended).
+Set your API keys as environment variables before running the script.
 
 ### PowerShell (Windows)
 ```powershell
@@ -60,60 +55,79 @@ export GOOGLE_API_KEY="your_google_api_key"
 export GROQ_API_KEY="your_groq_api_key"
 ```
 
-If keys are not found, the script securely prompts at runtime using `getpass`.
+If these are not set, the script securely prompts for both keys at runtime using `getpass`.
 
 ## How to Run
+### Option A: Notebook (Primary)
+1. Open `LLM_AGENT_FOR_DATA_MINING.ipynb` in Jupyter/VS Code.
+2. Run cells sequentially from top to bottom.
+3. Provide API keys when prompted (if not already set in environment variables).
+
+### Option B: Python Script (Alternative)
 From the project directory:
 
 ```bash
 python data_mining_agent.py
 ```
 
-## Runtime Workflow
-1. Initialize API clients and LLMs.
-2. Load and embed historical sentiment data.
-3. Build FAISS index for semantic retrieval.
-4. Validate deterministic sentiment mining against ground-truth labels (`classification_report`).
-5. Process high-velocity text stream:
-   - Triage and drop non-financial noise
-   - Extract ticker/entity
-   - Fetch live market price (`yfinance`)
-   - Generate draft insight (Groq)
-   - Apply deterministic numeric verification
-6. Compute pipeline benchmarks and hallucination statistics.
-7. Generate final executive summary with Gemini.
+## How RAG Works with the LLM Agent
+The LLM agent does not generate insights from raw stream text alone. It follows a retrieval-first workflow:
+
+1. **User/Stream Input arrives** and is triaged for financial relevance.
+2. **Embedding step:** Relevant text is converted into dense vectors using sentence-transformers.
+3. **Retrieval step (FAISS):** The system retrieves top-K similar historical financial sentiment records.
+4. **Context assembly:** Retrieved records + mined sentiment signals are packaged as grounded context.
+5. **Agent generation step (Groq Llama-3):** The LLM agent produces a concise market brief using only the current input and retrieved evidence.
+6. **Deterministic verification layer:** Regex/numeric checks validate the price claim; invalid outputs are replaced by a deterministic safe response.
+7. **Executive agent synthesis (Gemini):** Final run-level macro summary is generated from verified pipeline metrics.
+
+This design reduces hallucination risk by forcing the agent to reason over retrieved evidence and deterministic constraints.
+
+## Improved General Process
+1. **Initialize Secure Runtime:** Load API keys and initialize Groq + Gemini models.
+2. **Build Financial Memory:** Load historical dataset, compute embeddings, and construct FAISS index.
+3. **Validate Mining Rules:** Evaluate deterministic sentiment keyword logic using classification metrics.
+4. **Agentic Stream Loop (per item):**
+  - Triage and drop irrelevant noise early.
+  - Extract ticker/entity and fetch live price.
+  - Retrieve semantically similar historical context (RAG).
+  - Generate grounded draft insight via LLM agent.
+  - Enforce deterministic numeric verification and fallback when needed.
+5. **Benchmark + Monitor:** Compute throughput, latency, and hallucination interception metrics.
+6. **Executive Synthesis:** Produce final market-level summary from verified run outputs.
 
 ## Dataflow
 ```mermaid
 flowchart TD
-    A[Unstructured Text Stream] --> B{Deterministic Triage<br/>Ticker/Entity Detected?}
-    B -- No --> C[Drop as Noise<br/>Record Drop Latency]
-    B -- Yes --> D[Fetch Live Price<br/>Yahoo Finance]
-    D --> E[Embed Incoming Text<br/>SentenceTransformer]
-    E --> F[FAISS KNN Retrieval<br/>Historical Financial Context]
-    F --> G[Deterministic Sentiment Mining<br/>Bullish/Bearish/Neutral]
-    G --> H[Groq Draft Generation<br/>1-Sentence Market Insight]
-    H --> I{Deterministic Math Verification<br/>Price Match?}
-    I -- Fail --> J[System Override Output<br/>Verified Price + Sentiment]
-    I -- Pass --> K[Accept LLM Output]
-    J --> L[Benchmark Metrics Store]
-    K --> L
-    C --> L
-    L --> M[Gemini Executive Summary]
-    M --> N[Final Console Report]
+    A[Unstructured Text Stream] --> B{Deterministic Triage\nTicker/Entity Detected?}
+    B -- No --> C[Drop as Noise\nRecord Drop Latency]
+    B -- Yes --> D[Fetch Live Price\nYahoo Finance]
+    D --> E[Embed Incoming Text\nSentenceTransformer]
+    E --> F[FAISS KNN Retrieval\nHistorical Context]
+  F --> G[Deterministic Sentiment Mining\nBullish/Bearish/Neutral]
+  G --> H[LLM Agent Reasoning Layer\nContext + Input + Live Price]
+  H --> I[Groq Draft Insight Generation]
+  I --> J{Deterministic Math Verification\nPrice Match?}
+  J -- Fail --> K[Deterministic System Override\nVerified Price + Sentiment]
+  J -- Pass --> L[Accept Draft Output]
+  K --> M[Benchmark Metrics Collector]
+  L --> M
+  C --> M
+  M --> N[Gemini Executive Synthesis]
+  N --> O[Final Console Report]
 ```
 
 ## Output Metrics
-On completion, the script reports:
+Upon completion, the script reports:
 - Total, processed, and dropped stream items.
 - Average triage/drop latency (saved API calls).
-- Baseline LLM-only latency vs hybrid pipeline latency (including overhead percentage).
-- Hallucinations caught and final hallucination rate for the run.
+- Baseline LLM latency versus hybrid pipeline latency (overhead percentage).
+- Hallucinations caught and final systemic hallucination rate for the run.
 
 ## Notes
-- Live market retrieval depends on Yahoo Finance availability and symbol coverage.
-- API latency and output quality vary with network conditions and provider load.
-- For reproducible academic reporting, log execution time, package versions, and exact model versions.
+- Live price retrieval depends on Yahoo Finance market/data availability.
+- LLM response quality and latency vary with API status, server load, and network conditions.
+- For reproducibility in academic reporting, document execution time, package versions, and model versions used.
 
 ## Author
 Manab Biswas
